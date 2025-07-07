@@ -1459,6 +1459,1199 @@ build:
   only:
     - main
 
+## 11.8 生产环境配置
+
+### 环境变量管理
+
+```javascript
+// config/production.js
+module.exports = {
+    // 数据库配置
+    database: {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT || 5432,
+        database: process.env.DB_NAME,
+        username: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        dialect: 'postgres',
+        logging: false, // 生产环境关闭SQL日志
+        pool: {
+            max: 20,
+            min: 5,
+            acquire: 30000,
+            idle: 10000
+        },
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false
+            }
+        }
+    },
+    
+    // Redis配置
+    redis: {
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT || 6379,
+        password: process.env.REDIS_PASSWORD,
+        db: 0,
+        retryDelayOnFailover: 100,
+        enableReadyCheck: true,
+        maxRetriesPerRequest: 3
+    },
+    
+    // JWT配置
+    jwt: {
+        secret: process.env.JWT_SECRET,
+        accessTokenExpiry: '15m',
+        refreshTokenExpiry: '7d'
+    },
+    
+    // 邮件配置
+    email: {
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD
+        },
+        from: process.env.EMAIL_FROM
+    },
+    
+    // 文件上传配置
+    upload: {
+        maxFileSize: 10 * 1024 * 1024, // 10MB
+        allowedTypes: ['image/jpeg', 'image/png', 'image/gif'],
+        destination: process.env.UPLOAD_PATH || '/app/uploads'
+    },
+    
+    // 安全配置
+    security: {
+        bcryptRounds: 12,
+        rateLimitWindowMs: 15 * 60 * 1000, // 15分钟
+        rateLimitMax: 100, // 每个IP每15分钟最多100个请求
+        corsOrigin: process.env.CORS_ORIGIN?.split(',') || ['https://app.example.com']
+    },
+    
+    // 日志配置
+    logging: {
+        level: 'info',
+        file: {
+            enabled: true,
+            filename: '/app/logs/app.log',
+            maxsize: 10 * 1024 * 1024, // 10MB
+            maxFiles: 5
+        },
+        console: {
+            enabled: false // 生产环境关闭控制台日志
+        }
+    }
+};
+```
+
+### PM2 进程管理
+
+```javascript
+// ecosystem.config.js
+module.exports = {
+    apps: [{
+        name: 'student-management',
+        script: './src/server.js',
+        instances: 'max', // 使用所有CPU核心
+        exec_mode: 'cluster',
+        env: {
+            NODE_ENV: 'development',
+            PORT: 3000
+        },
+        env_production: {
+            NODE_ENV: 'production',
+            PORT: 3000
+        },
+        // 日志配置
+        log_file: './logs/combined.log',
+        out_file: './logs/out.log',
+        error_file: './logs/error.log',
+        log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+        
+        // 监控配置
+        monitoring: false,
+        
+        // 重启配置
+        max_restarts: 10,
+        min_uptime: '10s',
+        
+        // 内存限制
+        max_memory_restart: '500M',
+        
+        // 自动重启
+        autorestart: true,
+        
+        // 监听文件变化（仅开发环境）
+        watch: false,
+        ignore_watch: ['node_modules', 'logs', 'uploads'],
+        
+        // 环境变量
+        env_file: '.env.production'
+    }],
+    
+    deploy: {
+        production: {
+            user: 'deploy',
+            host: ['production-server.com'],
+            ref: 'origin/main',
+            repo: 'git@github.com:username/student-management.git',
+            path: '/opt/student-management',
+            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
+        },
+        staging: {
+            user: 'deploy',
+            host: ['staging-server.com'],
+            ref: 'origin/develop',
+            repo: 'git@github.com:username/student-management.git',
+            path: '/opt/student-management-staging',
+            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env staging'
+        }
+    }
+};
+```
+
+### Nginx 反向代理配置
+
+```nginx
+# nginx.conf
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    
+    # 日志格式
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+    
+    access_log /var/log/nginx/access.log main;
+    error_log /var/log/nginx/error.log warn;
+    
+    # 基础配置
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    
+    # 压缩配置
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/xml+rss
+        application/atom+xml
+        image/svg+xml;
+    
+    # 上游服务器
+    upstream app {
+        least_conn;
+        server app:3000 max_fails=3 fail_timeout=30s;
+        # 如果有多个实例
+        # server app2:3000 max_fails=3 fail_timeout=30s;
+        # server app3:3000 max_fails=3 fail_timeout=30s;
+    }
+    
+    # 限流配置
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+    
+    # HTTPS重定向
+    server {
+        listen 80;
+        server_name app.example.com;
+        return 301 https://$server_name$request_uri;
+    }
+    
+    # 主服务器配置
+    server {
+        listen 443 ssl http2;
+        server_name app.example.com;
+        
+        # SSL配置
+        ssl_certificate /etc/nginx/ssl/cert.pem;
+        ssl_certificate_key /etc/nginx/ssl/key.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        
+        # 安全头
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        
+        # 客户端最大请求体大小
+        client_max_body_size 10M;
+        
+        # 静态文件
+        location /static/ {
+            alias /app/public/;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+        
+        # 上传文件
+        location /uploads/ {
+            alias /app/uploads/;
+            expires 1M;
+            add_header Cache-Control "public";
+        }
+        
+        # API路由
+        location /api/ {
+            limit_req zone=api burst=20 nodelay;
+            
+            proxy_pass http://app;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+            
+            # 超时配置
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+        }
+        
+        # 登录限流
+        location /api/auth/login {
+            limit_req zone=login burst=5 nodelay;
+            
+            proxy_pass http://app;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        # 前端应用
+        location / {
+            proxy_pass http://app;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+        }
+        
+        # 健康检查
+        location /health {
+            access_log off;
+            proxy_pass http://app/api/health;
+        }
+    }
+}
+```
+
+## 11.9 监控和日志
+
+### Winston 日志配置
+
+```javascript
+// src/utils/logger.js
+const winston = require('winston');
+const path = require('path');
+
+// 自定义日志格式
+const logFormat = winston.format.combine(
+    winston.format.timestamp({
+        format: 'YYYY-MM-DD HH:mm:ss'
+    }),
+    winston.format.errors({ stack: true }),
+    winston.format.json(),
+    winston.format.prettyPrint()
+);
+
+// 创建日志器
+const logger = winston.createLogger({
+    level: process.env.LOG_LEVEL || 'info',
+    format: logFormat,
+    defaultMeta: {
+        service: 'student-management',
+        version: process.env.npm_package_version
+    },
+    transports: [
+        // 错误日志
+        new winston.transports.File({
+            filename: path.join(process.cwd(), 'logs', 'error.log'),
+            level: 'error',
+            maxsize: 10 * 1024 * 1024, // 10MB
+            maxFiles: 5,
+            tailable: true
+        }),
+        
+        // 组合日志
+        new winston.transports.File({
+            filename: path.join(process.cwd(), 'logs', 'combined.log'),
+            maxsize: 10 * 1024 * 1024,
+            maxFiles: 5,
+            tailable: true
+        }),
+        
+        // 访问日志
+        new winston.transports.File({
+            filename: path.join(process.cwd(), 'logs', 'access.log'),
+            level: 'http',
+            maxsize: 10 * 1024 * 1024,
+            maxFiles: 10,
+            tailable: true
+        })
+    ],
+    
+    // 异常处理
+    exceptionHandlers: [
+        new winston.transports.File({
+            filename: path.join(process.cwd(), 'logs', 'exceptions.log')
+        })
+    ],
+    
+    // 拒绝处理
+    rejectionHandlers: [
+        new winston.transports.File({
+            filename: path.join(process.cwd(), 'logs', 'rejections.log')
+        })
+    ]
+});
+
+// 开发环境添加控制台输出
+if (process.env.NODE_ENV !== 'production') {
+    logger.add(new winston.transports.Console({
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple()
+        )
+    }));
+}
+
+// 请求日志中间件
+const requestLogger = (req, res, next) => {
+    const start = Date.now();
+    
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const logData = {
+            method: req.method,
+            url: req.url,
+            status: res.statusCode,
+            duration: `${duration}ms`,
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            userId: req.user?.id
+        };
+        
+        if (res.statusCode >= 400) {
+            logger.warn('HTTP Request', logData);
+        } else {
+            logger.http('HTTP Request', logData);
+        }
+    });
+    
+    next();
+};
+
+// 错误日志中间件
+const errorLogger = (err, req, res, next) => {
+    logger.error('Application Error', {
+        error: {
+            message: err.message,
+            stack: err.stack,
+            name: err.name
+        },
+        request: {
+            method: req.method,
+            url: req.url,
+            headers: req.headers,
+            body: req.body,
+            params: req.params,
+            query: req.query
+        },
+        user: req.user?.id
+    });
+    
+    next(err);
+};
+
+module.exports = {
+    logger,
+    requestLogger,
+    errorLogger
+};
+```
+
+### 应用监控
+
+```javascript
+// src/utils/monitoring.js
+const os = require('os');
+const { logger } = require('./logger');
+const { sequelize } = require('../models');
+const redis = require('../config/redis');
+
+class MonitoringService {
+    constructor() {
+        this.metrics = {
+            requests: 0,
+            errors: 0,
+            responseTime: [],
+            activeConnections: 0
+        };
+        
+        this.startMonitoring();
+    }
+    
+    // 开始监控
+    startMonitoring() {
+        // 每分钟记录系统指标
+        setInterval(() => {
+            this.recordSystemMetrics();
+        }, 60000);
+        
+        // 每5分钟记录应用指标
+        setInterval(() => {
+            this.recordApplicationMetrics();
+        }, 300000);
+        
+        // 每小时清理指标
+        setInterval(() => {
+            this.cleanupMetrics();
+        }, 3600000);
+    }
+    
+    // 记录系统指标
+    async recordSystemMetrics() {
+        const metrics = {
+            timestamp: new Date(),
+            system: {
+                platform: os.platform(),
+                arch: os.arch(),
+                uptime: os.uptime(),
+                loadavg: os.loadavg(),
+                totalmem: os.totalmem(),
+                freemem: os.freemem(),
+                cpus: os.cpus().length
+            },
+            process: {
+                pid: process.pid,
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                cpu: process.cpuUsage()
+            }
+        };
+        
+        logger.info('System Metrics', metrics);
+        
+        // 检查内存使用率
+        const memoryUsage = (metrics.process.memory.heapUsed / metrics.process.memory.heapTotal) * 100;
+        if (memoryUsage > 80) {
+            logger.warn('High Memory Usage', {
+                usage: `${memoryUsage.toFixed(2)}%`,
+                heapUsed: metrics.process.memory.heapUsed,
+                heapTotal: metrics.process.memory.heapTotal
+            });
+        }
+        
+        // 检查系统负载
+        const loadAvg = metrics.system.loadavg[0];
+        const cpuCount = metrics.system.cpus;
+        if (loadAvg > cpuCount * 0.8) {
+            logger.warn('High System Load', {
+                loadAvg,
+                cpuCount,
+                usage: `${((loadAvg / cpuCount) * 100).toFixed(2)}%`
+            });
+        }
+    }
+    
+    // 记录应用指标
+    async recordApplicationMetrics() {
+        try {
+            // 数据库连接状态
+            const dbStatus = await this.checkDatabaseHealth();
+            
+            // Redis连接状态
+            const redisStatus = await this.checkRedisHealth();
+            
+            // 应用指标
+            const appMetrics = {
+                timestamp: new Date(),
+                database: dbStatus,
+                redis: redisStatus,
+                application: {
+                    requests: this.metrics.requests,
+                    errors: this.metrics.errors,
+                    errorRate: this.metrics.requests > 0 ? (this.metrics.errors / this.metrics.requests) * 100 : 0,
+                    avgResponseTime: this.calculateAverageResponseTime(),
+                    activeConnections: this.metrics.activeConnections
+                }
+            };
+            
+            logger.info('Application Metrics', appMetrics);
+            
+            // 检查错误率
+            if (appMetrics.application.errorRate > 5) {
+                logger.warn('High Error Rate', {
+                    errorRate: `${appMetrics.application.errorRate.toFixed(2)}%`,
+                    errors: this.metrics.errors,
+                    requests: this.metrics.requests
+                });
+            }
+            
+        } catch (error) {
+            logger.error('Failed to record application metrics', { error: error.message });
+        }
+    }
+    
+    // 检查数据库健康状态
+    async checkDatabaseHealth() {
+        try {
+            const start = Date.now();
+            await sequelize.authenticate();
+            const responseTime = Date.now() - start;
+            
+            return {
+                status: 'healthy',
+                responseTime: `${responseTime}ms`
+            };
+        } catch (error) {
+            return {
+                status: 'unhealthy',
+                error: error.message
+            };
+        }
+    }
+    
+    // 检查Redis健康状态
+    async checkRedisHealth() {
+        try {
+            const start = Date.now();
+            await redis.ping();
+            const responseTime = Date.now() - start;
+            
+            return {
+                status: 'healthy',
+                responseTime: `${responseTime}ms`
+            };
+        } catch (error) {
+            return {
+                status: 'unhealthy',
+                error: error.message
+            };
+        }
+    }
+    
+    // 计算平均响应时间
+    calculateAverageResponseTime() {
+        if (this.metrics.responseTime.length === 0) return 0;
+        
+        const sum = this.metrics.responseTime.reduce((a, b) => a + b, 0);
+        return Math.round(sum / this.metrics.responseTime.length);
+    }
+    
+    // 记录请求
+    recordRequest(responseTime) {
+        this.metrics.requests++;
+        this.metrics.responseTime.push(responseTime);
+        
+        // 保持最近1000个响应时间记录
+        if (this.metrics.responseTime.length > 1000) {
+            this.metrics.responseTime = this.metrics.responseTime.slice(-1000);
+        }
+    }
+    
+    // 记录错误
+    recordError() {
+        this.metrics.errors++;
+    }
+    
+    // 记录活跃连接
+    recordConnection(delta = 1) {
+        this.metrics.activeConnections += delta;
+    }
+    
+    // 清理指标
+    cleanupMetrics() {
+        this.metrics.requests = 0;
+        this.metrics.errors = 0;
+        this.metrics.responseTime = [];
+        
+        logger.info('Metrics cleaned up');
+    }
+    
+    // 获取当前指标
+    getCurrentMetrics() {
+        return {
+            ...this.metrics,
+            avgResponseTime: this.calculateAverageResponseTime(),
+            errorRate: this.metrics.requests > 0 ? (this.metrics.errors / this.metrics.requests) * 100 : 0
+        };
+    }
+}
+
+// 监控中间件
+const monitoringMiddleware = (monitoring) => {
+    return (req, res, next) => {
+        const start = Date.now();
+        monitoring.recordConnection(1);
+        
+        res.on('finish', () => {
+            const responseTime = Date.now() - start;
+            monitoring.recordRequest(responseTime);
+            monitoring.recordConnection(-1);
+            
+            if (res.statusCode >= 400) {
+                monitoring.recordError();
+            }
+        });
+        
+        next();
+    };
+};
+
+module.exports = {
+    MonitoringService,
+    monitoringMiddleware
+};
+```
+
+### Sentry 错误追踪
+
+```javascript
+// src/utils/sentry.js
+const Sentry = require('@sentry/node');
+const { ProfilingIntegration } = require('@sentry/profiling-node');
+
+// 初始化Sentry
+Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV,
+    release: process.env.npm_package_version,
+    
+    // 性能监控
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    
+    // 性能分析
+    profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    
+    integrations: [
+        new ProfilingIntegration(),
+        new Sentry.Integrations.Http({ tracing: true }),
+        new Sentry.Integrations.Express({ app: require('../app') })
+    ],
+    
+    // 过滤敏感数据
+    beforeSend(event) {
+        // 移除密码等敏感信息
+        if (event.request?.data?.password) {
+            delete event.request.data.password;
+        }
+        
+        if (event.extra?.body?.password) {
+            delete event.extra.body.password;
+        }
+        
+        return event;
+    },
+    
+    // 忽略特定错误
+    ignoreErrors: [
+        'ValidationError',
+        'SequelizeValidationError',
+        'UnauthorizedError'
+    ]
+});
+
+// 错误处理中间件
+const sentryErrorHandler = Sentry.Handlers.errorHandler({
+    shouldHandleError(error) {
+        // 只处理500级别的错误
+        return error.status >= 500;
+    }
+});
+
+// 用户上下文设置
+const setSentryUser = (req, res, next) => {
+    if (req.user) {
+        Sentry.setUser({
+            id: req.user.id,
+            username: req.user.username,
+            email: req.user.email
+        });
+    }
+    next();
+};
+
+// 手动报告错误
+const reportError = (error, context = {}) => {
+    Sentry.withScope((scope) => {
+        Object.keys(context).forEach(key => {
+            scope.setContext(key, context[key]);
+        });
+        Sentry.captureException(error);
+    });
+};
+
+module.exports = {
+    Sentry,
+    sentryErrorHandler,
+    setSentryUser,
+    reportError
+};
+```
+
+## 11.10 性能优化
+
+### 缓存策略
+
+```javascript
+// src/utils/cache.js
+const redis = require('../config/redis');
+const { logger } = require('./logger');
+
+class CacheService {
+    constructor() {
+        this.defaultTTL = 3600; // 1小时
+    }
+    
+    // 生成缓存键
+    generateKey(prefix, ...parts) {
+        return `${prefix}:${parts.join(':')}`;
+    }
+    
+    // 获取缓存
+    async get(key) {
+        try {
+            const value = await redis.get(key);
+            if (value) {
+                return JSON.parse(value);
+            }
+            return null;
+        } catch (error) {
+            logger.error('Cache get error', { key, error: error.message });
+            return null;
+        }
+    }
+    
+    // 设置缓存
+    async set(key, value, ttl = this.defaultTTL) {
+        try {
+            await redis.setex(key, ttl, JSON.stringify(value));
+            return true;
+        } catch (error) {
+            logger.error('Cache set error', { key, error: error.message });
+            return false;
+        }
+    }
+    
+    // 删除缓存
+    async del(key) {
+        try {
+            await redis.del(key);
+            return true;
+        } catch (error) {
+            logger.error('Cache delete error', { key, error: error.message });
+            return false;
+        }
+    }
+    
+    // 批量删除缓存
+    async delPattern(pattern) {
+        try {
+            const keys = await redis.keys(pattern);
+            if (keys.length > 0) {
+                await redis.del(...keys);
+            }
+            return keys.length;
+        } catch (error) {
+            logger.error('Cache delete pattern error', { pattern, error: error.message });
+            return 0;
+        }
+    }
+    
+    // 缓存装饰器
+    cached(ttl = this.defaultTTL) {
+        return (target, propertyName, descriptor) => {
+            const method = descriptor.value;
+            
+            descriptor.value = async function(...args) {
+                const cacheKey = `method:${target.constructor.name}:${propertyName}:${JSON.stringify(args)}`;
+                
+                // 尝试从缓存获取
+                let result = await this.cache.get(cacheKey);
+                if (result !== null) {
+                    return result;
+                }
+                
+                // 执行原方法
+                result = await method.apply(this, args);
+                
+                // 缓存结果
+                await this.cache.set(cacheKey, result, ttl);
+                
+                return result;
+            };
+            
+            return descriptor;
+        };
+    }
+}
+
+// 缓存中间件
+const cacheMiddleware = (ttl = 300) => {
+    return async (req, res, next) => {
+        // 只缓存GET请求
+        if (req.method !== 'GET') {
+            return next();
+        }
+        
+        const cacheKey = `http:${req.originalUrl}`;
+        const cache = new CacheService();
+        
+        try {
+            const cachedResponse = await cache.get(cacheKey);
+            if (cachedResponse) {
+                res.set(cachedResponse.headers);
+                res.set('X-Cache', 'HIT');
+                return res.status(cachedResponse.status).json(cachedResponse.body);
+            }
+        } catch (error) {
+            logger.error('Cache middleware error', { error: error.message });
+        }
+        
+        // 拦截响应
+        const originalSend = res.json;
+        res.json = function(body) {
+            // 只缓存成功响应
+            if (res.statusCode === 200) {
+                const responseData = {
+                    status: res.statusCode,
+                    headers: res.getHeaders(),
+                    body
+                };
+                
+                cache.set(cacheKey, responseData, ttl).catch(error => {
+                    logger.error('Failed to cache response', { error: error.message });
+                });
+            }
+            
+            res.set('X-Cache', 'MISS');
+            return originalSend.call(this, body);
+        };
+        
+        next();
+    };
+};
+
+module.exports = {
+    CacheService,
+    cacheMiddleware
+};
+```
+
+### 数据库优化
+
+```javascript
+// src/utils/database-optimizer.js
+const { QueryTypes } = require('sequelize');
+const { sequelize } = require('../models');
+const { logger } = require('./logger');
+
+class DatabaseOptimizer {
+    // 分析慢查询
+    async analyzeSlowQueries() {
+        try {
+            const slowQueries = await sequelize.query(`
+                SELECT 
+                    query,
+                    calls,
+                    total_time,
+                    mean_time,
+                    rows
+                FROM pg_stat_statements 
+                WHERE mean_time > 100
+                ORDER BY mean_time DESC
+                LIMIT 10
+            `, { type: QueryTypes.SELECT });
+            
+            logger.info('Slow queries analysis', { slowQueries });
+            return slowQueries;
+        } catch (error) {
+            logger.error('Failed to analyze slow queries', { error: error.message });
+            return [];
+        }
+    }
+    
+    // 分析表大小
+    async analyzeTableSizes() {
+        try {
+            const tableSizes = await sequelize.query(`
+                SELECT 
+                    schemaname,
+                    tablename,
+                    attname,
+                    n_distinct,
+                    correlation
+                FROM pg_stats 
+                WHERE schemaname = 'public'
+                ORDER BY n_distinct DESC
+            `, { type: QueryTypes.SELECT });
+            
+            logger.info('Table sizes analysis', { tableSizes });
+            return tableSizes;
+        } catch (error) {
+            logger.error('Failed to analyze table sizes', { error: error.message });
+            return [];
+        }
+    }
+    
+    // 分析索引使用情况
+    async analyzeIndexUsage() {
+        try {
+            const indexUsage = await sequelize.query(`
+                SELECT 
+                    schemaname,
+                    tablename,
+                    indexname,
+                    idx_tup_read,
+                    idx_tup_fetch
+                FROM pg_stat_user_indexes
+                ORDER BY idx_tup_read DESC
+            `, { type: QueryTypes.SELECT });
+            
+            logger.info('Index usage analysis', { indexUsage });
+            return indexUsage;
+        } catch (error) {
+            logger.error('Failed to analyze index usage', { error: error.message });
+            return [];
+        }
+    }
+    
+    // 优化建议
+    async getOptimizationSuggestions() {
+        const suggestions = [];
+        
+        try {
+            // 检查未使用的索引
+            const unusedIndexes = await sequelize.query(`
+                SELECT 
+                    schemaname,
+                    tablename,
+                    indexname
+                FROM pg_stat_user_indexes
+                WHERE idx_tup_read = 0 AND idx_tup_fetch = 0
+            `, { type: QueryTypes.SELECT });
+            
+            if (unusedIndexes.length > 0) {
+                suggestions.push({
+                    type: 'unused_indexes',
+                    message: '发现未使用的索引',
+                    data: unusedIndexes
+                });
+            }
+            
+            // 检查缺失的索引
+            const missingIndexes = await sequelize.query(`
+                SELECT 
+                    schemaname,
+                    tablename,
+                    attname,
+                    n_distinct,
+                    correlation
+                FROM pg_stats 
+                WHERE schemaname = 'public' 
+                AND n_distinct > 100 
+                AND correlation < 0.1
+            `, { type: QueryTypes.SELECT });
+            
+            if (missingIndexes.length > 0) {
+                suggestions.push({
+                    type: 'missing_indexes',
+                    message: '建议添加索引的字段',
+                    data: missingIndexes
+                });
+            }
+            
+        } catch (error) {
+            logger.error('Failed to get optimization suggestions', { error: error.message });
+        }
+        
+        return suggestions;
+    }
+    
+    // 执行VACUUM和ANALYZE
+    async maintainDatabase() {
+        try {
+            await sequelize.query('VACUUM ANALYZE');
+            logger.info('Database maintenance completed');
+        } catch (error) {
+            logger.error('Database maintenance failed', { error: error.message });
+        }
+    }
+}
+
+module.exports = DatabaseOptimizer;
+```
+
+## 11.11 本章小结
+
+### 核心知识点
+
+1. **测试体系**
+   - 单元测试：模型、服务、工具函数测试
+   - 集成测试：API端到端测试
+   - 性能测试：负载测试、内存泄漏检测
+   - 测试覆盖率：代码覆盖率分析和报告
+
+2. **容器化部署**
+   - Docker镜像构建和优化
+   - Docker Compose多服务编排
+   - 容器健康检查和监控
+   - 生产环境容器配置
+
+3. **CI/CD流程**
+   - 自动化测试和构建
+   - 代码质量检查和安全审计
+   - 自动化部署和回滚
+   - 多环境部署策略
+
+4. **生产环境配置**
+   - 环境变量管理
+   - PM2进程管理
+   - Nginx反向代理和负载均衡
+   - SSL/TLS安全配置
+
+5. **监控和日志**
+   - 结构化日志记录
+   - 系统和应用监控
+   - 错误追踪和报警
+   - 性能指标收集
+
+6. **性能优化**
+   - Redis缓存策略
+   - 数据库查询优化
+   - 静态资源优化
+   - 内存和CPU优化
+
+### 实践成果
+
+通过本章学习，你已经掌握了：
+
+- ✅ 完整的测试框架搭建
+- ✅ Docker容器化部署方案
+- ✅ CI/CD自动化流程
+- ✅ 生产环境配置和优化
+- ✅ 监控和日志系统
+- ✅ 性能优化最佳实践
+
+## 11.12 课后练习
+
+### 基础练习
+
+1. **测试编写**
+   - 为用户认证模块编写完整的单元测试
+   - 实现API集成测试，覆盖所有CRUD操作
+   - 添加测试数据工厂和测试工具函数
+
+2. **Docker部署**
+   - 创建多阶段Docker构建
+   - 配置Docker Compose开发环境
+   - 实现容器健康检查
+
+3. **监控配置**
+   - 配置Winston日志系统
+   - 实现基础的应用监控
+   - 添加错误报警机制
+
+### 进阶练习
+
+1. **性能优化**
+   - 实现Redis缓存层
+   - 优化数据库查询性能
+   - 添加API响应时间监控
+
+2. **CI/CD流程**
+   - 配置GitHub Actions工作流
+   - 实现自动化测试和部署
+   - 添加代码质量检查
+
+3. **生产环境**
+   - 配置Nginx负载均衡
+   - 实现SSL/TLS加密
+   - 添加安全头和防护措施
+
+### 挑战练习
+
+1. **高可用部署**
+   - 实现多实例负载均衡
+   - 配置数据库主从复制
+   - 实现零停机部署
+
+2. **监控告警**
+   - 集成Prometheus和Grafana
+   - 实现自定义监控指标
+   - 配置告警规则和通知
+
+3. **性能测试**
+   - 实现压力测试和基准测试
+   - 分析性能瓶颈和优化点
+   - 制定性能优化方案
+
+## 下一章预告
+
+在下一章《项目总结与扩展》中，我们将：
+
+- 回顾整个项目的架构和实现
+- 总结开发过程中的最佳实践
+- 探讨项目的扩展方向和优化空间
+- 分享实际开发中的经验和技巧
+- 提供进一步学习的资源和建议
+
+## 学习资源
+
+### 官方文档
+- [Jest Testing Framework](https://jestjs.io/)
+- [Docker Documentation](https://docs.docker.com/)
+- [GitHub Actions](https://docs.github.com/en/actions)
+- [PM2 Documentation](https://pm2.keymetrics.io/)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+
+### 推荐阅读
+- 《测试驱动开发》- Kent Beck
+- 《持续交付》- Jez Humble
+- 《Docker实战》- Jeff Nickoloff
+- 《高性能网站建设指南》- Steve Souders
+- 《SRE：Google运维解密》- Google SRE Team
+
+### 在线资源
+- [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
+- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [Kubernetes Documentation](https://kubernetes.io/docs/)
+- [Monitoring and Observability](https://sre.google/books/)
+- [Performance Testing Guide](https://k6.io/docs/)
+
 deploy_staging:
   stage: deploy
   image: alpine:latest
