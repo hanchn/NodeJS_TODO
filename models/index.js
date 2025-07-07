@@ -1,25 +1,13 @@
-import { Sequelize } from 'sequelize';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// 创建SQLite数据库连接
-export const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: path.join(__dirname, '../database.sqlite'),
-  logging: false, // 设置为true可以看到SQL查询日志
-  define: {
-    timestamps: true, // 自动添加createdAt和updatedAt字段
-    underscored: false, // 使用驼峰命名
-  }
-});
+// 导入新的数据库配置
+import sequelize, { testConnection } from '../config/database.js';
 
 // 测试数据库连接
 try {
-  await sequelize.authenticate();
-  console.log('数据库连接已建立');
+  await testConnection();
 } catch (error) {
-  console.error('无法连接到数据库:', error);
+  console.error('数据库初始化失败:', error);
+  process.exit(1);
 }
+
+export default sequelize;
+export { testConnection };

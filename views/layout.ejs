@@ -74,25 +74,47 @@
     <main class="flex-grow-1">
         <div class="container mt-4">
             <!-- 成功消息 -->
-            <% if (typeof success !== 'undefined' && success) { %>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <%= success %>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+            <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+                <% success.forEach(function(msg) { %>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <%= msg %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <% }); %>
             <% } %>
-
+            
             <!-- 错误消息 -->
-            <% if (typeof errors !== 'undefined' && errors && errors.length > 0) { %>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <ul class="mb-0">
-                        <% errors.forEach(error => { %>
-                            <li><%= error %></li>
-                        <% }); %>
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+            <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+                <% error.forEach(function(msg) { %>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <%= msg %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <% }); %>
+            <% } %>
+            
+            <!-- 警告消息 -->
+            <% if (typeof warning !== 'undefined' && warning && warning.length > 0) { %>
+                <% warning.forEach(function(msg) { %>
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <%= msg %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <% }); %>
+            <% } %>
+            
+            <!-- 信息消息 -->
+            <% if (typeof info !== 'undefined' && info && info.length > 0) { %>
+                <% info.forEach(function(msg) { %>
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <%= msg %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <% }); %>
             <% } %>
 
             <%- body %>
