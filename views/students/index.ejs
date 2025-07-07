@@ -1,0 +1,182 @@
+<% 
+  const success = new URLSearchParams(new URL('http://localhost' + (typeof req !== 'undefined' ? req.url : '')).search).get('success');
+%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">
+        <i class="bi bi-people-fill me-2 text-primary"></i>
+        学生列表
+        <span class="badge bg-secondary ms-2"><%= totalCount %></span>
+    </h1>
+    <a href="/students/new" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>
+        添加学生
+    </a>
+</div>
+
+<!-- 搜索表单 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="/students" class="row g-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           name="search" 
+                           value="<%= search %>" 
+                           placeholder="搜索学生姓名、学号或专业...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid gap-2 d-md-flex">
+                    <button type="submit" class="btn btn-outline-primary flex-fill">
+                        <i class="bi bi-search me-1"></i>
+                        搜索
+                    </button>
+                    <% if (search) { %>
+                        <a href="/students" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>
+                            清除
+                        </a>
+                    <% } %>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 成功消息 -->
+<% if (success) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+<% } %>
+
+<!-- 学生表格 -->
+<div class="card">
+    <div class="card-body">
+        <% if (students.length === 0) { %>
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="mt-3 text-muted">暂无学生数据</h4>
+                <p class="text-muted">点击上方"添加学生"按钮开始添加学生信息</p>
+                <a href="/students/new" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    添加第一个学生
+                </a>
+            </div>
+        <% } else { %>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">学号</th>
+                            <th scope="col">姓名</th>
+                            <th scope="col">性别</th>
+                            <th scope="col">年龄</th>
+                            <th scope="col">专业</th>
+                            <th scope="col">年级</th>
+                            <th scope="col">联系方式</th>
+                            <th scope="col" class="text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% students.forEach(student => { %>
+                            <tr>
+                                <td>
+                                    <strong class="text-primary"><%= student.studentId %></strong>
+                                </td>
+                                <td><%= student.name %></td>
+                                <td>
+                                    <span class="badge <%= student.gender === '男' ? 'bg-info' : 'bg-warning' %>">
+                                        <%= student.gender %>
+                                    </span>
+                                </td>
+                                <td><%= student.age %></td>
+                                <td><%= student.major %></td>
+                                <td><%= student.grade %></td>
+                                <td>
+                                    <% if (student.phone) { %>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-telephone me-1"></i>
+                                            <%= student.phone %>
+                                        </small>
+                                    <% } %>
+                                    <% if (student.email) { %>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-envelope me-1"></i>
+                                            <%= student.email %>
+                                        </small>
+                                    <% } %>
+                                    <% if (!student.phone && !student.email) { %>
+                                        <span class="text-muted">-</span>
+                                    <% } %>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <a href="/students/<%= student.id %>" 
+                                           class="btn btn-sm btn-outline-info" 
+                                           title="查看详情">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="/students/<%= student.id %>/edit" 
+                                           class="btn btn-sm btn-outline-warning" 
+                                           title="编辑">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" 
+                                              action="/students/<%= student.id %>?_method=DELETE" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirmDelete('<%= student.name %>')">
+                                            <button type="submit" 
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    title="删除">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <% if (totalPages > 1) { %>
+                <nav aria-label="学生列表分页">
+                    <ul class="pagination justify-content-center mt-4">
+                        <% if (currentPage > 1) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= currentPage - 1 %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        <% } %>
+                        
+                        <% for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) { %>
+                            <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                                <a class="page-link" href="?page=<%= i %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">
+                                    <%= i %>
+                                </a>
+                            </li>
+                        <% } %>
+                        
+                        <% if (currentPage < totalPages) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= currentPage + 1 %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </nav>
+            <% } %>
+        <% } %>
+    </div>
+</div>
