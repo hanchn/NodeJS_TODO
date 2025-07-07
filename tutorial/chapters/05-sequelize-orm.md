@@ -1788,4 +1788,689 @@ Student.addHook('afterCreate', async (student, options) => {
     console.error('发送欢迎邮件失败:', error);
     
     // 可以选择记录到错误日志或重试队列
-    await ErrorLog
+    await ErrorLog.create({
+      type: 'EMAIL_SEND_FAILED',
+      message: error.message,
+      context: {
+        studentId: student.id,
+        email: student.email
+      }
+    });
+  }
+});
+```
+
+## 5.9 事务处理
+
+### 基础事务
+
+```javascript
+// 自动管理事务
+const result = await sequelize.transaction(async (t) => {
+  // 在事务中创建学生
+  const student = await Student.create({
+    name: '张三',
+    email: 'zhangsan@example.com',
+    age: 20
+  }, { transaction: t });
+  
+  // 在事务中创建用户账户
+  const user = await User.create({
+    username: 'zhangsan',
+    email: 'zhangsan@example.com',
+    studentId: student.id
+  }, { transaction: t });
+  
+  // 如果任何操作失败，事务会自动回滚
+  return { student, user };
+});
+
+console.log('学生和用户创建成功:', result);
+```
+
+### 手动管理事务
+
+```javascript
+// 手动管理事务
+const t = await sequelize.transaction();
+
+try {
+  // 创建学生
+  const student = await Student.create({
+    name: '李四',
+    email: 'lisi@example.com',
+    age: 21
+  }, { transaction: t });
+  
+  // 创建选课记录
+  const course = await Course.findByPk(1, { transaction: t });
+  if (!course) {
+    throw new Error('课程不存在');
+  }
+  
+  await StudentCourse.create({
+    studentId: student.id,
+    courseId: course.id,
+    enrollmentDate: new Date()
+  }, { transaction: t });
+  
+  // 更新课程选课人数
+  await course.increment('enrollmentCount', { transaction: t });
+  
+  // 提交事务
+  await t.commit();
+  console.log('学生选课成功');
+  
+} catch (error) {
+  // 回滚事务
+  await t.rollback();
+  console.error('学生选课失败:', error.message);
+  throw error;
+}
+```
+
+### 事务隔离级别
+
+```javascript
+const { Transaction } = require('sequelize');
+
+// 设置事务隔离级别
+const result = await sequelize.transaction({
+  isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE
+}, async (t) => {
+  // 在最高隔离级别下执行操作
+  const student = await Student.findByPk(1, {
+    transaction: t,
+    lock: Transaction.LOCK.UPDATE
+  });
+  
+  if (student.balance >= 100) {
+    await student.update({
+      balance: student.balance - 100
+    }, { transaction: t });
+    
+    return student;
+  } else {
+    throw new Error('余额不足');
+  }
+});
+```
+
+### 分布式事务
+
+```javascript
+// 复杂的业务事务示例
+class StudentService {
+  async enrollStudentInCourse(studentId, courseId, paymentInfo) {
+    return await sequelize.transaction(async (t) => {
+      // 1. 检查学生是否存在
+      const student = await Student.findByPk(studentId, {
+        transaction: t,
+        lock: Transaction.LOCK.UPDATE
+      });
+      
+      if (!student) {
+        throw new Error('学生不存在');
+      }
+      
+      if (student.status !== 'active') {
+        throw new Error('学生状态不允许选课');
+      }
+      
+      // 2. 检查课程是否存在且有名额
+      const course = await Course.findByPk(courseId, {
+        transaction: t,
+        lock: Transaction.LOCK.UPDATE
+      });
+      
+      if (!course) {
+        throw new Error('课程不存在');
+      }
+      
+      if (course.enrollmentCount >= course.maxEnrollment) {
+        throw new Error('课程已满员');
+      }
+      
+      // 3. 检查是否已经选过该课程
+      const existingEnrollment = await StudentCourse.findOne({
+        where: {
+          studentId,
+          courseId
+        },
+        transaction: t
+      });
+      
+      if (existingEnrollment) {
+        throw new Error('已经选过该课程');
+      }
+      
+      // 4. 处理付款
+      const payment = await Payment.create({
+        studentId,
+        courseId,
+        amount: course.fee,
+        method: paymentInfo.method,
+        status: 'pending'
+      }, { transaction: t });
+      
+      // 模拟支付处理
+      const paymentResult = await processPayment(payment, paymentInfo);
+      if (!paymentResult.success) {
+        throw new Error('支付失败: ' + paymentResult.error);
+      }
+      
+      await payment.update({
+        status: 'completed',
+        transactionId: paymentResult.transactionId
+      }, { transaction: t });
+      
+      // 5. 创建选课记录
+      const enrollment = await StudentCourse.create({
+        studentId,
+        courseId,
+        enrollmentDate: new Date(),
+        status: 'enrolled',
+        paymentId: payment.id
+      }, { transaction: t });
+      
+      // 6. 更新课程选课人数
+      await course.increment('enrollmentCount', { transaction: t });
+      
+      // 7. 记录操作日志
+      await AuditLog.create({
+        action: 'STUDENT_ENROLLMENT',
+        entityId: enrollment.id,
+        entityType: 'StudentCourse',
+        details: `学生 ${student.name} 选课 ${course.name}`,
+        userId: studentId
+      }, { transaction: t });
+      
+      // 8. 发送确认邮件（异步，不在事务中）
+      setImmediate(() => {
+        sendEnrollmentConfirmation(student.email, course.name);
+      });
+      
+      return {
+        enrollment,
+        payment,
+        student,
+        course
+      };
+    });
+  }
+}
+```
+
+## 5.10 迁移和种子
+
+### 迁移文件
+
+```javascript
+// migrations/20231201000001-create-students.js
+'use strict';
+
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.createTable('students', {
+      id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: Sequelize.INTEGER
+      },
+      name: {
+        type: Sequelize.STRING(100),
+        allowNull: false
+      },
+      email: {
+        type: Sequelize.STRING(255),
+        allowNull: false,
+        unique: true
+      },
+      age: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+      },
+      phone: {
+        type: Sequelize.STRING(20),
+        allowNull: true
+      },
+      address: {
+        type: Sequelize.TEXT,
+        allowNull: true
+      },
+      gender: {
+        type: Sequelize.ENUM('male', 'female', 'other'),
+        allowNull: true
+      },
+      birth_date: {
+        type: Sequelize.DATEONLY,
+        allowNull: true
+      },
+      enrollment_date: {
+        type: Sequelize.DATEONLY,
+        allowNull: true
+      },
+      status: {
+        type: Sequelize.ENUM('active', 'inactive', 'graduated', 'suspended'),
+        allowNull: false,
+        defaultValue: 'active'
+      },
+      gpa: {
+        type: Sequelize.DECIMAL(3, 2),
+        allowNull: true
+      },
+      notes: {
+        type: Sequelize.TEXT,
+        allowNull: true
+      },
+      avatar_url: {
+        type: Sequelize.STRING(500),
+        allowNull: true
+      },
+      created_at: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updated_at: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      deleted_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      }
+    });
+    
+    // 添加索引
+    await queryInterface.addIndex('students', ['email'], {
+      unique: true,
+      name: 'students_email_unique'
+    });
+    
+    await queryInterface.addIndex('students', ['name']);
+    await queryInterface.addIndex('students', ['status']);
+    await queryInterface.addIndex('students', ['enrollment_date']);
+  },
+
+  async down(queryInterface, Sequelize) {
+    await queryInterface.dropTable('students');
+  }
+};
+```
+
+### 修改表结构的迁移
+
+```javascript
+// migrations/20231202000001-add-student-id-to-students.js
+'use strict';
+
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    // 添加新字段
+    await queryInterface.addColumn('students', 'student_id', {
+      type: Sequelize.STRING(20),
+      allowNull: true,
+      unique: true
+    });
+    
+    // 为现有记录生成学号
+    const [students] = await queryInterface.sequelize.query(
+      'SELECT id FROM students ORDER BY id'
+    );
+    
+    const year = new Date().getFullYear();
+    for (let i = 0; i < students.length; i++) {
+      const studentId = `${year}${(i + 1).toString().padStart(4, '0')}`;
+      await queryInterface.sequelize.query(
+        'UPDATE students SET student_id = ? WHERE id = ?',
+        {
+          replacements: [studentId, students[i].id]
+        }
+      );
+    }
+    
+    // 设置字段为非空
+    await queryInterface.changeColumn('students', 'student_id', {
+      type: Sequelize.STRING(20),
+      allowNull: false,
+      unique: true
+    });
+    
+    // 添加索引
+    await queryInterface.addIndex('students', ['student_id'], {
+      unique: true,
+      name: 'students_student_id_unique'
+    });
+  },
+
+  async down(queryInterface, Sequelize) {
+    await queryInterface.removeIndex('students', 'students_student_id_unique');
+    await queryInterface.removeColumn('students', 'student_id');
+  }
+};
+```
+
+### 种子文件
+
+```javascript
+// seeders/20231201000001-demo-students.js
+'use strict';
+
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    const students = [];
+    const year = new Date().getFullYear();
+    
+    // 生成示例学生数据
+    const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十'];
+    const domains = ['example.com', 'test.com', 'demo.com'];
+    const statuses = ['active', 'inactive', 'graduated'];
+    const genders = ['male', 'female'];
+    
+    for (let i = 0; i < 50; i++) {
+      const name = names[Math.floor(Math.random() * names.length)] + (i + 1);
+      const domain = domains[Math.floor(Math.random() * domains.length)];
+      const email = `${name.toLowerCase().replace(/\s+/g, '')}${i + 1}@${domain}`;
+      const age = Math.floor(Math.random() * 10) + 18; // 18-27岁
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const gender = genders[Math.floor(Math.random() * genders.length)];
+      const gpa = status === 'graduated' ? (Math.random() * 2 + 2).toFixed(2) : null;
+      
+      students.push({
+        name,
+        email,
+        age,
+        phone: `138${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
+        gender,
+        status,
+        gpa,
+        student_id: `${year}${(i + 1).toString().padStart(4, '0')}`,
+        enrollment_date: new Date(year - Math.floor(Math.random() * 4), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+    }
+    
+    await queryInterface.bulkInsert('students', students, {});
+  },
+
+  async down(queryInterface, Sequelize) {
+    await queryInterface.bulkDelete('students', null, {});
+  }
+};
+```
+
+### 运行迁移和种子
+
+```bash
+# 运行所有待执行的迁移
+npx sequelize-cli db:migrate
+
+# 回滚最后一次迁移
+npx sequelize-cli db:migrate:undo
+
+# 回滚所有迁移
+npx sequelize-cli db:migrate:undo:all
+
+# 运行特定的迁移
+npx sequelize-cli db:migrate --to 20231201000001-create-students.js
+
+# 运行所有种子文件
+npx sequelize-cli db:seed:all
+
+# 运行特定的种子文件
+npx sequelize-cli db:seed --seed 20231201000001-demo-students.js
+
+# 撤销所有种子数据
+npx sequelize-cli db:seed:undo:all
+```
+
+## 5.11 性能优化
+
+### 查询优化
+
+```javascript
+// 1. 使用索引
+const students = await Student.findAll({
+  where: {
+    status: 'active', // 确保 status 字段有索引
+    enrollment_date: {
+      [Op.gte]: '2023-01-01' // 确保 enrollment_date 字段有索引
+    }
+  }
+});
+
+// 2. 选择特定字段
+const students = await Student.findAll({
+  attributes: ['id', 'name', 'email'], // 只选择需要的字段
+  where: {
+    status: 'active'
+  }
+});
+
+// 3. 使用原生查询优化复杂查询
+const [results] = await sequelize.query(`
+  SELECT 
+    s.id,
+    s.name,
+    s.email,
+    COUNT(sc.course_id) as course_count,
+    AVG(sc.grade) as avg_grade
+  FROM students s
+  LEFT JOIN student_courses sc ON s.id = sc.student_id
+  WHERE s.status = 'active'
+  GROUP BY s.id, s.name, s.email
+  HAVING COUNT(sc.course_id) > 0
+  ORDER BY avg_grade DESC
+  LIMIT 10
+`, {
+  type: QueryTypes.SELECT
+});
+
+// 4. 使用子查询优化
+const topStudents = await Student.findAll({
+  where: {
+    id: {
+      [Op.in]: sequelize.literal(`(
+        SELECT student_id 
+        FROM student_courses 
+        GROUP BY student_id 
+        HAVING AVG(CASE 
+          WHEN grade = 'A' THEN 4.0
+          WHEN grade = 'B' THEN 3.0
+          WHEN grade = 'C' THEN 2.0
+          WHEN grade = 'D' THEN 1.0
+          ELSE 0.0
+        END) >= 3.5
+      )`)
+    }
+  },
+  include: [{
+    model: Course,
+    as: 'courses',
+    through: { attributes: ['grade'] }
+  }]
+});
+```
+
+### 连接池优化
+
+```javascript
+// config/database.js - 连接池配置
+const sequelize = new Sequelize(database, username, password, {
+  host: 'localhost',
+  dialect: 'postgres',
+  
+  // 连接池配置
+  pool: {
+    max: 20,          // 最大连接数
+    min: 5,           // 最小连接数
+    acquire: 30000,   // 获取连接的最大等待时间（毫秒）
+    idle: 10000,      // 连接空闲的最大时间（毫秒）
+    evict: 1000,      // 检查空闲连接的间隔时间（毫秒）
+    handleDisconnects: true // 自动处理断开的连接
+  },
+  
+  // 查询优化
+  dialectOptions: {
+    // PostgreSQL 特定选项
+    statement_timeout: 30000, // 查询超时时间
+    idle_in_transaction_session_timeout: 30000
+  },
+  
+  // 日志配置
+  logging: (sql, timing) => {
+    if (timing > 1000) { // 记录慢查询
+      console.warn(`慢查询 (${timing}ms):`, sql);
+    }
+  },
+  
+  // 基准测试
+  benchmark: true
+});
+```
+
+### 批量操作优化
+
+```javascript
+// 批量插入优化
+class StudentService {
+  async bulkCreateStudents(studentsData) {
+    // 分批处理大量数据
+    const batchSize = 1000;
+    const results = [];
+    
+    for (let i = 0; i < studentsData.length; i += batchSize) {
+      const batch = studentsData.slice(i, i + batchSize);
+      
+      const batchResult = await Student.bulkCreate(batch, {
+        validate: true,
+        ignoreDuplicates: true,
+        updateOnDuplicate: ['name', 'age', 'phone'], // 更新重复记录
+        returning: true // PostgreSQL 返回插入的记录
+      });
+      
+      results.push(...batchResult);
+    }
+    
+    return results;
+  }
+  
+  // 批量更新优化
+  async bulkUpdateStudentStatus(studentIds, newStatus) {
+    // 使用事务确保一致性
+    return await sequelize.transaction(async (t) => {
+      // 分批更新
+      const batchSize = 500;
+      let updatedCount = 0;
+      
+      for (let i = 0; i < studentIds.length; i += batchSize) {
+        const batch = studentIds.slice(i, i + batchSize);
+        
+        const [affectedRows] = await Student.update(
+          { status: newStatus },
+          {
+            where: {
+              id: { [Op.in]: batch }
+            },
+            transaction: t
+          }
+        );
+        
+        updatedCount += affectedRows;
+      }
+      
+      return updatedCount;
+    });
+  }
+}
+```
+
+## 5.12 本章小结
+
+在本章中，我们深入学习了 Sequelize ORM 的核心功能：
+
+✅ **ORM 基础**：
+- 理解了 ORM 的概念、优势和应用场景
+- 掌握了 Sequelize 的安装和基础配置
+- 学会了数据库连接和环境配置
+
+✅ **模型定义**：
+- 掌握了模型的定义和数据类型
+- 学会了字段约束和验证规则
+- 理解了模型选项和作用域
+
+✅ **关联关系**：
+- 掌握了一对一、一对多、多对多关联
+- 学会了关联查询和数据操作
+- 理解了外键约束和级联操作
+
+✅ **CRUD 操作**：
+- 熟练掌握了创建、查询、更新、删除操作
+- 学会了复杂查询和聚合操作
+- 掌握了批量操作和分页查询
+
+✅ **高级功能**：
+- 学会了数据验证和自定义验证器
+- 掌握了钩子函数的使用
+- 理解了事务处理和并发控制
+- 学会了迁移和种子数据管理
+
+✅ **性能优化**：
+- 掌握了查询优化技巧
+- 学会了连接池配置
+- 理解了批量操作的最佳实践
+
+## 5.13 课后练习
+
+1. **模型设计练习**：
+   - 设计一个完整的学校管理系统数据模型
+   - 包括学生、教师、课程、班级、成绩等实体
+   - 定义合适的关联关系和约束
+
+2. **查询练习**：
+   - 实现复杂的统计查询（如各专业平均GPA）
+   - 编写分页查询和搜索功能
+   - 实现数据导出功能
+
+3. **事务练习**：
+   - 实现学生转专业的事务处理
+   - 处理选课和退课的并发操作
+   - 实现成绩录入的批量事务
+
+4. **性能优化练习**：
+   - 分析和优化慢查询
+   - 设计合适的数据库索引
+   - 实现数据缓存策略
+
+## 5.14 下一章预告
+
+在下一章中，我们将学习如何构建完整的 RESTful API，包括：
+
+- RESTful API 设计原则
+- 路由设计和版本控制
+- 请求验证和错误处理
+- API 文档生成
+- 认证和授权
+- API 测试和调试
+
+## 5.15 学习资源
+
+### 官方文档
+- [Sequelize 官方文档](https://sequelize.org/)
+- [Sequelize CLI 文档](https://github.com/sequelize/cli)
+
+### 推荐阅读
+- 《Learning SQL》 - Alan Beaulieu
+- 《Database Design for Mere Mortals》 - Michael J. Hernandez
+
+### 在线资源
+- [Sequelize 中文文档](https://www.sequelize.com.cn/)
+- [SQL 教程 - W3Schools](https://www.w3schools.com/sql/)
+
+---
+
+恭喜你完成了 Sequelize ORM 的学习！你现在已经掌握了使用 ORM 进行数据库操作的核心技能，这将大大提高你的开发效率和代码质量。在下一章中，我们将学习如何构建 RESTful API，将数据库操作与 Web 服务完美结合。
