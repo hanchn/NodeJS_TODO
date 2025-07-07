@@ -22,6 +22,8 @@ class StudentController {
         students: result.students,
         pagination: result.pagination,
         totalCount: result.pagination.totalCount,
+        totalPages: result.pagination.totalPages,
+        currentPage: result.pagination.currentPage,
         search: result.search,
         query: req.query
       });
@@ -39,6 +41,9 @@ class StudentController {
           hasPrev: false,
           limit: 10
         },
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
         search: '',
         query: req.query
       });
