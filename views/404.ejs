@@ -1,0 +1,83 @@
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card border-0">
+            <div class="card-body py-5">
+                <!-- 404图标 -->
+                <div class="mb-4">
+                    <i class="bi bi-exclamation-triangle display-1 text-warning"></i>
+                </div>
+                
+                <!-- 错误标题 -->
+                <h1 class="display-4 fw-bold text-muted mb-3">404</h1>
+                <h2 class="h4 mb-3">页面未找到</h2>
+                
+                <!-- 错误描述 -->
+                <p class="text-muted mb-4">
+                    抱歉，您访问的页面不存在或已被移动。
+                    <br>
+                    请检查URL是否正确，或返回首页继续浏览。
+                </p>
+                
+                <!-- 操作按钮 -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <a href="/students" class="btn btn-primary">
+                        <i class="bi bi-house me-1"></i>
+                        返回首页
+                    </a>
+                    <button onclick="history.back()" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        返回上页
+                    </button>
+                </div>
+                
+                <!-- 快速链接 -->
+                <div class="mt-4">
+                    <h6 class="text-muted mb-3">您可能在寻找：</h6>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <a href="/students" class="btn btn-sm btn-outline-info">
+                            <i class="bi bi-list me-1"></i>
+                            学生列表
+                        </a>
+                        <a href="/students/new" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            添加学生
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 帮助信息 -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-question-circle me-1"></i>
+                    需要帮助？
+                </h6>
+                <p class="card-text small text-muted mb-0">
+                    如果您认为这是一个错误，请联系系统管理员。
+                    <br>
+                    或者您可以尝试刷新页面，有时候这能解决临时的问题。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 自动记录404错误（可选）
+console.warn('404 Error: Page not found -', window.location.href);
+
+// 添加键盘快捷键
+document.addEventListener('keydown', function(e) {
+    // 按ESC键返回首页
+    if (e.key === 'Escape') {
+        window.location.href = '/students';
+    }
+    // 按Backspace键返回上页
+    if (e.key === 'Backspace' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        history.back();
+    }
+});
+</script>

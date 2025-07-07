@@ -1,0 +1,237 @@
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    编辑学生信息
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/students/<%= student.id %>?_method=PUT" novalidate>
+                    <div class="row">
+                        <!-- 学号 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="studentId" class="form-label">
+                                <i class="bi bi-card-text me-1"></i>
+                                学号 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control <%= errors.some(e => e.includes('学号')) ? 'is-invalid' : '' %>" 
+                                   id="studentId" 
+                                   name="studentId" 
+                                   value="<%= student.studentId || '' %>" 
+                                   placeholder="请输入学号"
+                                   required>
+                        </div>
+
+                        <!-- 姓名 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">
+                                <i class="bi bi-person me-1"></i>
+                                姓名 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control <%= errors.some(e => e.includes('姓名')) ? 'is-invalid' : '' %>" 
+                                   id="name" 
+                                   name="name" 
+                                   value="<%= student.name || '' %>" 
+                                   placeholder="请输入姓名"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- 性别 -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-gender-ambiguous me-1"></i>
+                                性别 <span class="text-danger">*</span>
+                            </label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" 
+                                           type="radio" 
+                                           name="gender" 
+                                           id="male" 
+                                           value="男" 
+                                           <%= student.gender === '男' ? 'checked' : '' %>
+                                           required>
+                                    <label class="form-check-label" for="male">
+                                        <i class="bi bi-gender-male text-info me-1"></i>
+                                        男
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" 
+                                           type="radio" 
+                                           name="gender" 
+                                           id="female" 
+                                           value="女" 
+                                           <%= student.gender === '女' ? 'checked' : '' %>
+                                           required>
+                                    <label class="form-check-label" for="female">
+                                        <i class="bi bi-gender-female text-warning me-1"></i>
+                                        女
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 年龄 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="age" class="form-label">
+                                <i class="bi bi-calendar me-1"></i>
+                                年龄 <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" 
+                                   class="form-control <%= errors.some(e => e.includes('年龄')) ? 'is-invalid' : '' %>" 
+                                   id="age" 
+                                   name="age" 
+                                   value="<%= student.age || '' %>" 
+                                   placeholder="请输入年龄"
+                                   min="1" 
+                                   max="150"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- 专业 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="major" class="form-label">
+                                <i class="bi bi-book me-1"></i>
+                                专业 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control <%= errors.some(e => e.includes('专业')) ? 'is-invalid' : '' %>" 
+                                   id="major" 
+                                   name="major" 
+                                   value="<%= student.major || '' %>" 
+                                   placeholder="请输入专业"
+                                   required>
+                        </div>
+
+                        <!-- 年级 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="grade" class="form-label">
+                                <i class="bi bi-mortarboard me-1"></i>
+                                年级 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select <%= errors.some(e => e.includes('年级')) ? 'is-invalid' : '' %>" 
+                                    id="grade" 
+                                    name="grade" 
+                                    required>
+                                <option value="">请选择年级</option>
+                                <option value="大一" <%= student.grade === '大一' ? 'selected' : '' %>>大一</option>
+                                <option value="大二" <%= student.grade === '大二' ? 'selected' : '' %>>大二</option>
+                                <option value="大三" <%= student.grade === '大三' ? 'selected' : '' %>>大三</option>
+                                <option value="大四" <%= student.grade === '大四' ? 'selected' : '' %>>大四</option>
+                                <option value="研一" <%= student.grade === '研一' ? 'selected' : '' %>>研一</option>
+                                <option value="研二" <%= student.grade === '研二' ? 'selected' : '' %>>研二</option>
+                                <option value="研三" <%= student.grade === '研三' ? 'selected' : '' %>>研三</option>
+                                <option value="博一" <%= student.grade === '博一' ? 'selected' : '' %>>博一</option>
+                                <option value="博二" <%= student.grade === '博二' ? 'selected' : '' %>>博二</option>
+                                <option value="博三" <%= student.grade === '博三' ? 'selected' : '' %>>博三</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- 邮箱 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">
+                                <i class="bi bi-envelope me-1"></i>
+                                邮箱
+                            </label>
+                            <input type="email" 
+                                   class="form-control <%= errors.some(e => e.includes('邮箱')) ? 'is-invalid' : '' %>" 
+                                   id="email" 
+                                   name="email" 
+                                   value="<%= student.email || '' %>" 
+                                   placeholder="请输入邮箱地址">
+                        </div>
+
+                        <!-- 手机号 -->
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">
+                                <i class="bi bi-telephone me-1"></i>
+                                手机号
+                            </label>
+                            <input type="tel" 
+                                   class="form-control <%= errors.some(e => e.includes('手机')) ? 'is-invalid' : '' %>" 
+                                   id="phone" 
+                                   name="phone" 
+                                   value="<%= student.phone || '' %>" 
+                                   placeholder="请输入手机号码"
+                                   pattern="^[1][3-9]\d{9}$">
+                        </div>
+                    </div>
+
+                    <!-- 提交按钮 -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="/students/<%= student.id %>" class="btn btn-outline-secondary me-md-2">
+                            <i class="bi bi-arrow-left me-1"></i>
+                            取消编辑
+                        </a>
+                        <a href="/students" class="btn btn-outline-info me-md-2">
+                            <i class="bi bi-list me-1"></i>
+                            返回列表
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-circle me-1"></i>
+                            保存修改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 当前信息预览 -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-eye me-1"></i>
+                    当前信息预览
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">学号：</small>
+                        <strong class="d-block"><%= student.studentId %></strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">姓名：</small>
+                        <strong class="d-block"><%= student.name %></strong>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <small class="text-muted">专业：</small>
+                        <strong class="d-block"><%= student.major %></strong>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <small class="text-muted">年级：</small>
+                        <strong class="d-block"><%= student.grade %></strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑说明 -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-info-circle me-1"></i>
+                    编辑说明
+                </h6>
+                <ul class="list-unstyled mb-0 small text-muted">
+                    <li><i class="bi bi-dot"></i> 标有 <span class="text-danger">*</span> 的字段为必填项</li>
+                    <li><i class="bi bi-dot"></i> 修改学号时请确保不与其他学生重复</li>
+                    <li><i class="bi bi-dot"></i> 年龄范围：1-150岁</li>
+                    <li><i class="bi bi-dot"></i> 手机号格式：以1开头的11位数字</li>
+                    <li><i class="bi bi-dot"></i> 点击"取消编辑"返回学生详情页面</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

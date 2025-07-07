@@ -1,0 +1,238 @@
+<% 
+  const success = new URLSearchParams(new URL('http://localhost' + (typeof req !== 'undefined' ? req.url : '')).search).get('success');
+%>
+
+<!-- 成功消息 -->
+<% if (success) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+<% } %>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <!-- 学生信息卡片 -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">
+                        <i class="bi bi-person-circle me-2"></i>
+                        学生详情
+                    </h4>
+                    <div class="btn-group">
+                        <a href="/students/<%= student.id %>/edit" class="btn btn-sm btn-light">
+                            <i class="bi bi-pencil me-1"></i>
+                            编辑
+                        </a>
+                        <form method="POST" 
+                              action="/students/<%= student.id %>?_method=DELETE" 
+                              style="display: inline;" 
+                              onsubmit="return confirmDelete('<%= student.name %>')">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash me-1"></i>
+                                删除
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- 基本信息 -->
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-info-circle me-2 text-primary"></i>
+                            基本信息
+                        </h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">学号</label>
+                        <div class="fw-bold fs-5 text-primary">
+                            <i class="bi bi-card-text me-2"></i>
+                            <%= student.studentId %>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">姓名</label>
+                        <div class="fw-bold fs-5">
+                            <i class="bi bi-person me-2"></i>
+                            <%= student.name %>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">性别</label>
+                        <div>
+                            <span class="badge fs-6 <%= student.gender === '男' ? 'bg-info' : 'bg-warning' %>">
+                                <i class="bi <%= student.gender === '男' ? 'bi-gender-male' : 'bi-gender-female' %> me-1"></i>
+                                <%= student.gender %>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">年龄</label>
+                        <div class="fw-bold">
+                            <i class="bi bi-calendar me-2"></i>
+                            <%= student.age %> 岁
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <!-- 学业信息 -->
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-mortarboard me-2 text-success"></i>
+                            学业信息
+                        </h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">专业</label>
+                        <div class="fw-bold">
+                            <i class="bi bi-book me-2"></i>
+                            <%= student.major %>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">年级</label>
+                        <div>
+                            <span class="badge bg-success fs-6">
+                                <i class="bi bi-mortarboard me-1"></i>
+                                <%= student.grade %>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <!-- 联系信息 -->
+                    <div class="col-12">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-telephone me-2 text-warning"></i>
+                            联系信息
+                        </h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">邮箱地址</label>
+                        <div>
+                            <% if (student.email) { %>
+                                <a href="mailto:<%= student.email %>" class="text-decoration-none">
+                                    <i class="bi bi-envelope me-2"></i>
+                                    <%= student.email %>
+                                </a>
+                            <% } else { %>
+                                <span class="text-muted">
+                                    <i class="bi bi-dash me-2"></i>
+                                    未填写
+                                </span>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">手机号码</label>
+                        <div>
+                            <% if (student.phone) { %>
+                                <a href="tel:<%= student.phone %>" class="text-decoration-none">
+                                    <i class="bi bi-telephone me-2"></i>
+                                    <%= student.phone %>
+                                </a>
+                            <% } else { %>
+                                <span class="text-muted">
+                                    <i class="bi bi-dash me-2"></i>
+                                    未填写
+                                </span>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <!-- 系统信息 -->
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">
+                            <i class="bi bi-clock me-2"></i>
+                            系统信息
+                        </h6>
+                    </div>
+                    
+                    <div class="col-md-6 mb-2">
+                        <small class="text-muted">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            创建时间：<%= new Date(student.createdAt).toLocaleString('zh-CN') %>
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-6 mb-2">
+                        <small class="text-muted">
+                            <i class="bi bi-pencil-square me-1"></i>
+                            更新时间：<%= new Date(student.updatedAt).toLocaleString('zh-CN') %>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between">
+                    <a href="/students" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        返回列表
+                    </a>
+                    <div>
+                        <a href="/students/<%= student.id %>/edit" class="btn btn-warning me-2">
+                            <i class="bi bi-pencil me-1"></i>
+                            编辑信息
+                        </a>
+                        <form method="POST" 
+                              action="/students/<%= student.id %>?_method=DELETE" 
+                              style="display: inline;" 
+                              onsubmit="return confirmDelete('<%= student.name %>')">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>
+                                删除学生
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 快速操作卡片 -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-lightning me-1"></i>
+                    快速操作
+                </h6>
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="/students/new" class="btn btn-outline-primary">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        添加新学生
+                    </a>
+                    <a href="/students?search=<%= encodeURIComponent(student.major) %>" class="btn btn-outline-info">
+                        <i class="bi bi-search me-1"></i>
+                        查看同专业学生
+                    </a>
+                    <a href="/students?search=<%= encodeURIComponent(student.grade) %>" class="btn btn-outline-success">
+                        <i class="bi bi-people me-1"></i>
+                        查看同年级学生
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

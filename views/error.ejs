@@ -1,0 +1,160 @@
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    系统错误
+                </h4>
+            </div>
+            <div class="card-body text-center">
+                <!-- 错误图标 -->
+                <div class="mb-4">
+                    <i class="bi bi-bug display-1 text-danger"></i>
+                </div>
+                
+                <!-- 错误标题 -->
+                <h2 class="h4 mb-3 text-danger">服务器内部错误</h2>
+                
+                <!-- 错误描述 -->
+                <p class="text-muted mb-4">
+                    抱歉，服务器遇到了一个意外错误，无法完成您的请求。
+                    <br>
+                    我们的技术团队已经收到了错误报告，正在努力修复这个问题。
+                </p>
+                
+                <!-- 错误详情（仅在开发环境显示） -->
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="alert alert-light border text-start mb-4">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-info-circle me-1"></i>
+                            错误详情
+                        </h6>
+                        <code class="text-danger small"><%= error %></code>
+                    </div>
+                <% } %>
+                
+                <!-- 操作建议 -->
+                <div class="alert alert-info" role="alert">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        您可以尝试：
+                    </h6>
+                    <ul class="list-unstyled mb-0 text-start">
+                        <li><i class="bi bi-arrow-right me-2"></i>刷新当前页面</li>
+                        <li><i class="bi bi-arrow-right me-2"></i>返回上一页重新操作</li>
+                        <li><i class="bi bi-arrow-right me-2"></i>返回首页重新开始</li>
+                        <li><i class="bi bi-arrow-right me-2"></i>稍后再试</li>
+                    </ul>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <button onclick="location.reload()" class="btn btn-primary">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        刷新页面
+                    </button>
+                    <button onclick="history.back()" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        返回上页
+                    </button>
+                    <a href="/students" class="btn btn-outline-info">
+                        <i class="bi bi-house me-1"></i>
+                        返回首页
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 联系信息 -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-headset me-1"></i>
+                    需要技术支持？
+                </h6>
+                <p class="card-text small text-muted">
+                    如果问题持续存在，请联系系统管理员并提供以下信息：
+                </p>
+                <ul class="list-unstyled small text-muted">
+                    <li><strong>时间：</strong><%= new Date().toLocaleString('zh-CN') %></li>
+                    <li><strong>页面：</strong><span id="currentUrl"></span></li>
+                    <li><strong>操作：</strong>描述您执行的操作</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- 系统状态 -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-activity me-1"></i>
+                    系统状态
+                </h6>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="text-success">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <small class="text-muted">数据库</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-warning">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <small class="text-muted">应用服务</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-success">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <small class="text-muted">网络连接</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 显示当前URL
+document.getElementById('currentUrl').textContent = window.location.href;
+
+// 记录错误信息
+console.error('Server Error:', {
+    timestamp: new Date().toISOString(),
+    url: window.location.href,
+    userAgent: navigator.userAgent,
+    error: '<%= typeof error !== "undefined" ? error : "Unknown error" %>'
+});
+
+// 添加键盘快捷键
+document.addEventListener('keydown', function(e) {
+    // F5或Ctrl+R刷新页面
+    if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+        e.preventDefault();
+        location.reload();
+    }
+    // ESC键返回首页
+    if (e.key === 'Escape') {
+        window.location.href = '/students';
+    }
+});
+
+// 自动重试机制（可选）
+let retryCount = 0;
+const maxRetries = 3;
+
+function autoRetry() {
+    if (retryCount < maxRetries) {
+        retryCount++;
+        console.log(`自动重试 ${retryCount}/${maxRetries}...`);
+        setTimeout(() => {
+            location.reload();
+        }, 5000 * retryCount); // 递增延迟
+    }
+}
+
+// 可以根据需要启用自动重试
+// autoRetry();
+</script>
