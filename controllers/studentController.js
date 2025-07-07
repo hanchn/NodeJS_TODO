@@ -58,7 +58,7 @@ class StudentController {
       res.render('students/new', {
         title: '添加学生',
         student: {}, // 空对象用于表单初始化
-        errors: {}
+        errors: []
       });
     } catch (error) {
       console.error('显示添加表单错误:', error);
@@ -85,7 +85,7 @@ class StudentController {
       res.render('students/new', {
         title: '添加学生',
         student: req.body,
-        errors,
+        errors: this.convertErrorsToArray(errors),
         errorMessage: error.message
       });
     }
@@ -119,7 +119,7 @@ class StudentController {
       res.render('students/edit', {
         title: `编辑学生 - ${student.name}`,
         student,
-        errors: {}
+        errors: []
       });
     } catch (error) {
       console.error('显示编辑表单错误:', error);
@@ -148,7 +148,7 @@ class StudentController {
         res.render('students/edit', {
           title: `编辑学生 - ${student.name}`,
           student: { ...student.dataValues, ...req.body }, // 合并原数据和提交数据
-          errors,
+          errors: this.convertErrorsToArray(errors),
           errorMessage: error.message
         });
       } catch (getError) {
@@ -311,6 +311,25 @@ class StudentController {
     }
     
     return errors;
+  }
+
+  /**
+   * 将错误对象转换为数组格式
+   * @param {Object} errors - 错误对象
+   * @returns {Array} 错误数组
+   * @private
+   */
+  convertErrorsToArray(errors) {
+    if (Array.isArray(errors)) {
+      return errors;
+    }
+    
+    const errorArray = [];
+    for (const [field, message] of Object.entries(errors)) {
+      errorArray.push(message);
+    }
+    
+    return errorArray;
   }
 
   /**
