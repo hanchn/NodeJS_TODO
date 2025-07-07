@@ -5,7 +5,7 @@
  * 用于创建数据库表结构和插入示例数据
  */
 
-import { sequelize, syncDatabase, testConnection } from '../config/database.js';
+import sequelize, { syncDatabase, testConnection } from '../config/database.js';
 import Student from '../models/Student.js';
 import path from 'path';
 import fs from 'fs';

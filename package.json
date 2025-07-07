@@ -15,7 +15,7 @@
     "format": "echo \"Formatting not configured\"",
     "build": "echo \"No build process required\"",
     "clean": "rm -rf node_modules package-lock.json && npm install"
-  }
+  },
 	"keywords": [
 		"express",
 		"ejs",
