@@ -1,0 +1,249 @@
+{
+  "tutorial": {
+    "title": "Node.js 学生管理系统从0到1教程",
+    "version": "1.0.0",
+    "description": "一个完整的 Node.js 全栈开发教程，从环境搭建到项目部署",
+    "author": "Node.js 教程团队",
+    "language": "zh-CN",
+    "created": "2024-12-31",
+    "updated": "2024-12-31",
+    "difficulty": "初级到中级",
+    "duration": "40-50小时",
+    "prerequisites": [
+      "基础编程知识",
+      "HTML/CSS 基础",
+      "JavaScript 基础",
+      "命令行基础操作"
+    ],
+    "learning_outcomes": [
+      "掌握 Node.js 全栈开发",
+      "熟练使用 Express.js 框架",
+      "理解 MVC 架构模式",
+      "掌握数据库设计和操作",
+      "具备项目部署能力"
+    ]
+  },
+  "technology_stack": {
+    "backend": {
+      "runtime": "Node.js (v16+)",
+      "framework": "Express.js (v4.18+)",
+      "orm": "Sequelize (v6.28+)",
+      "database": "SQLite (v3.40+)",
+      "template_engine": "EJS (v3.1+)"
+    },
+    "frontend": {
+      "css_framework": "Bootstrap 5.2+",
+      "javascript": "ES6+",
+      "icons": "Bootstrap Icons",
+      "responsive": "Mobile-first design"
+    },
+    "development_tools": {
+      "package_manager": "npm",
+      "version_control": "Git",
+      "editor": "VS Code",
+      "api_testing": "Postman/Thunder Client",
+      "database_tool": "SQLite Browser"
+    }
+  },
+  "project_structure": {
+    "total_chapters": 30,
+    "parts": [
+      {
+        "name": "环境准备",
+        "chapters": 3,
+        "duration": "2-3小时",
+        "difficulty": "⭐-⭐⭐"
+      },
+      {
+        "name": "后端开发",
+        "chapters": 7,
+        "duration": "12-15小时",
+        "difficulty": "⭐⭐-⭐⭐⭐⭐"
+      },
+      {
+        "name": "前端开发",
+        "chapters": 5,
+        "duration": "8-12小时",
+        "difficulty": "⭐⭐-⭐⭐⭐"
+      },
+      {
+        "name": "功能实现",
+        "chapters": 6,
+        "duration": "12-18小时",
+        "difficulty": "⭐⭐-⭐⭐⭐"
+      },
+      {
+        "name": "高级功能",
+        "chapters": 4,
+        "duration": "6-10小时",
+        "difficulty": "⭐⭐⭐-⭐⭐⭐⭐"
+      },
+      {
+        "name": "工具和部署",
+        "chapters": 5,
+        "duration": "8-12小时",
+        "difficulty": "⭐⭐-⭐⭐⭐⭐"
+      }
+    ]
+  },
+  "learning_paths": {
+    "beginner": {
+      "name": "初学者路径",
+      "duration": "8-10周",
+      "chapters": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+      "focus": "基础概念和核心功能",
+      "daily_time": "1-2小时"
+    },
+    "intermediate": {
+      "name": "进阶路径",
+      "duration": "4-6周",
+      "chapters": [1, 2, 3, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+      "focus": "架构设计和最佳实践",
+      "daily_time": "2-3小时"
+    },
+    "fullstack": {
+      "name": "全栈路径",
+      "duration": "6-8周",
+      "chapters": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+      "focus": "完整的全栈开发技能",
+      "daily_time": "2-4小时"
+    }
+  },
+  "assessment": {
+    "basic_level": {
+      "score": 60,
+      "requirements": [
+        "能够独立搭建项目环境",
+        "理解 MVC 架构模式",
+        "实现基本的 CRUD 操作",
+        "创建简单的用户界面"
+      ]
+    },
+    "intermediate_level": {
+      "score": 80,
+      "requirements": [
+        "实现复杂的业务逻辑",
+        "掌握错误处理和验证",
+        "优化数据库查询性能",
+        "实现响应式设计"
+      ]
+    },
+    "advanced_level": {
+      "score": 100,
+      "requirements": [
+        "设计可扩展的系统架构",
+        "实现完整的测试覆盖",
+        "掌握部署和运维技能",
+        "能够独立解决复杂问题"
+      ]
+    }
+  },
+  "resources": {
+    "official_docs": [
+      {
+        "name": "Node.js 官方文档",
+        "url": "https://nodejs.org/docs/",
+        "description": "Node.js 官方API文档和指南"
+      },
+      {
+        "name": "Express.js 官方文档",
+        "url": "https://expressjs.com/",
+        "description": "Express.js 框架官方文档"
+      },
+      {
+        "name": "Sequelize 官方文档",
+        "url": "https://sequelize.org/",
+        "description": "Sequelize ORM 官方文档"
+      },
+      {
+        "name": "Bootstrap 官方文档",
+        "url": "https://getbootstrap.com/docs/",
+        "description": "Bootstrap CSS 框架文档"
+      }
+    ],
+    "learning_materials": [
+      {
+        "name": "MDN Web 文档",
+        "url": "https://developer.mozilla.org/",
+        "description": "Web 技术权威参考文档"
+      },
+      {
+        "name": "JavaScript.info",
+        "url": "https://javascript.info/",
+        "description": "现代 JavaScript 教程"
+      },
+      {
+        "name": "Node.js 最佳实践",
+        "url": "https://github.com/goldbergyoni/nodebestpractices",
+        "description": "Node.js 开发最佳实践指南"
+      }
+    ],
+    "tools": [
+      {
+        "name": "VS Code",
+        "url": "https://code.visualstudio.com/",
+        "description": "推荐的代码编辑器"
+      },
+      {
+        "name": "Postman",
+        "url": "https://www.postman.com/",
+        "description": "API 测试工具"
+      },
+      {
+        "name": "SQLite Browser",
+        "url": "https://sqlitebrowser.org/",
+        "description": "SQLite 数据库管理工具"
+      }
+    ]
+  },
+  "project_features": {
+    "core_features": [
+      "学生信息管理 (CRUD)",
+      "分页显示",
+      "搜索和筛选",
+      "表单验证",
+      "错误处理",
+      "响应式界面"
+    ],
+    "advanced_features": [
+      "数据导入导出",
+      "批量操作",
+      "操作日志",
+      "数据统计",
+      "权限管理",
+      "API 接口"
+    ],
+    "technical_features": [
+      "MVC 架构",
+      "ORM 数据操作",
+      "中间件系统",
+      "模板引擎",
+      "静态资源管理",
+      "环境配置"
+    ]
+  },
+  "chapter_status": {
+    "completed": [1],
+    "in_progress": [],
+    "planned": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+  },
+  "extensions": {
+    "suggested_improvements": [
+      "添加用户认证系统",
+      "实现文件上传功能",
+      "集成第三方API",
+      "添加实时通知",
+      "实现数据可视化",
+      "添加移动端APP"
+    ],
+    "related_technologies": [
+      "TypeScript",
+      "React.js",
+      "Vue.js",
+      "MongoDB",
+      "Redis",
+      "Docker",
+      "AWS/云服务"
+    ]
+  }
+}
